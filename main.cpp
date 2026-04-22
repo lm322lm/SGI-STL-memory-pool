@@ -6,7 +6,7 @@
 #include <iostream>
 
 int main() {
-    constexpr std::size_t N = 1'000'000;
+    constexpr std::size_t N = 100'000;
 
     std::cout << "===== SGI STL Memory Pool Benchmark =====\n";
     std::cout << "Operations: " << N << " (push_back + pop_back)\n\n";

@@ -11,8 +11,6 @@ int main() {
     std::cout << "===== SGI STL Memory Pool Benchmark =====\n";
     std::cout << "Operations: " << N << " (push_back + pop_back)\n\n";
 
-    std::size_t mem_before = bench::get_private_bytes();
-
     // 1. MyVector + SGIAllocator（自定义内存池）
     auto r1 = bench::run_benchmark<MyVector<int, sgi_stl::SGIAllocator<int>>>(
         "SGI Pool", N);
@@ -25,8 +23,6 @@ int main() {
     auto r3 = bench::run_benchmark<std::vector<int>>(
         "std::vector", N);
 
-    std::size_t mem_after = bench::get_private_bytes();
-
     // 输出对比：SGI Pool vs std::allocator
     std::cout << "\n[ MyVector: SGI Pool vs std::allocator ]\n";
     bench::print_comparison(r1, r2);
@@ -38,9 +34,6 @@ int main() {
     // 输出对比：MyVector(std::alloc) vs std::vector
     std::cout << "\n[ MyVector(std::alloc) vs std::vector ]\n";
     bench::print_comparison(r2, r3);
-
-    // 内存信息
-    bench::print_memory(mem_before, mem_after);
 
     std::cout << "\nDone.\n";
     return 0;

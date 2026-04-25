@@ -5,11 +5,11 @@
 
 ## 测试对象
 
-| 编号 |      容器    |         分配器       |          说明            |
-|  A   | MyVector    | SGIAllocator（内存池）| 自定义容器 + 自定义内存池 |
-|  B   | MyVector    |     std::allocator   | 自定义容器 + 标准分配器   |
-|  C   | std::vector |     std::allocator   | 标准库容器 + 标准分配器   |
-
+| 编号 | 容器         | 分配器                | 说明                        |
+| :--- | :----------- | :-------------------- | :-------------------------- |
+| A    | MyVector     | SGIAllocator（内存池） | 自定义容器 + 自定义内存池    |
+| B    | MyVector     | std::allocator        | 自定义容器 + 标准分配器      |
+| C    | std::vector  | std::allocator        | 标准库容器 + 标准分配器      |
 
 
 ## 第一组：A vs B（SGI Pool vs std::alloc，同容器对比）

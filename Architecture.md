@@ -2,7 +2,7 @@
 
 ## 一、项目目标
 
-实现一个仿 SGI STL 的二级空间配置器（内存池），并自定义一个简易 vector 容器，对 "push_back" 和 "pop_back" 进行百万级数据压测，与 "std::allocator" 和 "std::vector" 做性能对比，验证内存池在高频小对象分配场景下的优势。
+实现一个仿 SGI STL 的二级空间配置器（内存池），并自定义一个简易 vector 容器，对 "push_back" 和 "pop_back" 进行十万级数据压测，与 "std::allocator" 和 "std::vector" 做性能对比，验证内存池在高频小对象分配场景下的优势。
 
 ## 二、整体框架
 

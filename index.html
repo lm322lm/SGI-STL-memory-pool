@@ -102,7 +102,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--
 <h2 class="section-title">项目概述</h2>
 <p style="color:var(--text2);margin-bottom:20px">实现一个仿 SGI STL 的二级空间配置器（内存池），并自定义一个简易 vector 容器，对 push_back 和 pop_back 进行十万级数据压测，与 std::allocator 和 std::vector 做性能对比，验证内存池在高频小对象分配场景下的优势。</p>
 <div class="card-grid">
-<div class="card"><h3>测试环境</h3><p>Windows 11 / Clang++ (LLVM) / C++17 / -O2 优化</p></div>
+<div class="card"><h3>测试环境</h3><p>g++ -std=c++17 -O2 优化</p></div>
 <div class="card"><h3>操作规模</h3><p>100,000 次 push_back + 100,000 次 pop_back</p></div>
 <div class="card"><h3>数据类型</h3><p>int（4 字节），验证高频小对象分配性能</p></div>
 <div class="card"><h3>核心亮点</h3><p>SGI 内存池 + 精简容器，比标准库方案快 <span class="badge badge-green">1.64x</span></p></div>

@@ -20,27 +20,28 @@ graph TD
 
 ## 三、各模块作用
 
-|    模块    |      文件      |                作用                   |
-| 一级配置器 | SGIAllocator.h | 封装 malloc/free，提供 OOM 处理机制     |
-| 二级配置器 | SGIAllocator.h | 内存池 + 16 条 free_list，管理小块内存  |
-| STL 适配器 | SGIAllocator.h |    符合 STL Allocator 规范的模板类     |
-| 自定义容器 |   MyVector.h   |   三指针 vector，支持自定义 allocator   |
-| 压测引擎   |   Benchmark.h  |       计时、结果统计、格式化输出         |
-| 主程序     |    main.cpp    |        组装压测，输出三组对比           |
+| 模块 | 文件 | 作用 |
+| :--- | :--- | :--- |
+| 一级配置器 | `SGIAllocator.h` | 封装 `malloc/free`，提供 OOM 处理机制 |
+| 二级配置器 | `SGIAllocator.h` | 内存池 + 16 条 `free_list`，管理小块内存 |
+| STL 适配器 | `SGIAllocator.h` | 符合 STL `Allocator` 规范的模板类 |
+| 自定义容器 | `MyVector.h` | 三指针 vector，支持自定义 allocator |
+| 压测引擎 | `Benchmark.h` | 计时、结果统计、格式化输出 |
+| 主程序 | `main.cpp` | 组装压测，输出三组对比 |
 
 
 ## 四、压测流程
 
 1. 记录初始内存
 2. 测试组 1: MyVector<int, SGIAllocator<int>>
-   → push_back 100万次 (计时)
-   → pop_back  100万次 (计时)
+   → push_back 10万次 (计时)
+   → pop_back  10万次 (计时)
 3. 测试组 2: MyVector<int, std::allocator<int>>
-   → push_back 100万次 (计时)
-   → pop_back  100万次 (计时)
+   → push_back 10万次 (计时)
+   → pop_back  10万次 (计时)
 4. 测试组 3: std::vector<int>（参照组）
-   → push_back 100万次 (计时)
-   → pop_back  100万次 (计时)
+   → push_back 10万次 (计时)
+   → pop_back  10万次 (计时)
 5. 记录结束内存
 6. 输出对比表（时间 + 加速比 + 内存）
 

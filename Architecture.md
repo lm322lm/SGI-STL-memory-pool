@@ -8,14 +8,14 @@
 
 ```mermaid
 graph TD
-    A[main.cpp<br/>百万级压测入口] --> B[MyVector<br/>自定义容器]
+    A[main.cpp<br/>十万级压测入口] --> B[MyVector<br/>自定义容器]
     A --> C[Benchmark<br/>压测引擎]
     
-    B --> D[SGIAllocator<br/>STL标准适配器]
+    B --> D[SGIAllocator<br/>STL标准Allocator适配器]
     C --> D
     
-    D --> E[PoolAlloc<br/>二级内存池<br/>8~128字节]
-    E --> F[MallocAlloc<br/>一级分配器<br/>malloc/free]
+    D --> E[PoolAlloc（二级）<br/>free_list + 内存池chunk_alloc<br/>管理 8~128 字节小块分配]
+    E --> F[MallocAlloc（一级）<br/>malloc/free + OOM handler]
 ```
 
 ## 三、各模块作用

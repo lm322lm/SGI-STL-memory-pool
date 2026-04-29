@@ -1,107 +1,112 @@
-[result.md](https://github.com/user-attachments/files/26966821/result.md)
-# SGI STL 内存池压测结果解读（十万级数据）
+# SGI STL 内存池压测结果解读（Linux / Windows 三轮对比）
 
+## 测试说明
 
+- 操作规模：`100000` 次 `push_back` + `100000` 次 `pop_back`
+- 测试类型：`int`
+- Linux 编译命令：`g++ -std=c++17 -O2 -o benchmark main.cpp`
+- Linux 运行命令：`./benchmark`
+- Windows 运行环境：Visual Studio `x64/Debug` 运行结果（由截图中的 `x64\Debug\Project1.exe` 判断）
+- 结果来源：`result-Linux (1).png`、`result-Linux (2).png`、`result-Linux (3).png`、`result-Windows (1).png`、`result-Windows (2).png`、`result-Windows (3).png`
+
+> 当前 `Benchmark.h` 只统计 `push_back`、`pop_back` 和 `Total` 耗时，不统计进程内存占用，因此本文档只展示耗时和 speedup。
 
 ## 测试对象
 
-| 编号 | 容器         | 分配器                | 说明                        |
-| :--- | :----------- | :-------------------- | :-------------------------- |
-| A    | MyVector     | SGIAllocator（内存池） | 自定义容器 + 自定义内存池    |
-| B    | MyVector     | std::allocator        | 自定义容器 + 标准分配器      |
-| C    | std::vector  | std::allocator        | 标准库容器 + 标准分配器      |
+| 编号 | 容器 | 分配器 | 说明 |
+| --- | --- | --- | --- |
+| A | `MyVector` | `SGIAllocator` | 自定义容器 + 自定义内存池 |
+| B | `MyVector` | `std::allocator` | 自定义容器 + 标准分配器 |
+| C | `std::vector` | `std::allocator` | 标准库容器 + 标准分配器 |
 
+## Speedup 说明
 
-## 第一组：A vs B（SGI Pool vs std::alloc，同容器对比）
+程序输出中的 `Speedup` 计算方式为：第二列耗时 / 第一列耗时。
 
-Operation                     SGI Pool    std::alloc     Speedup
-push_back x 100000               0.52          0.56       1.08x
-pop_back  x 100000               0.00          0.00       0.05x
-Total                            0.52          0.56       1.07x
+- `Speedup > 1.00x`：第一列更快。
+- `Speedup < 1.00x`：第一列更慢。
+- `pop_back` 中出现 `0.00 ms` 时，说明耗时低于当前输出精度，对应的大倍数 speedup 不适合作为主要性能结论。
 
+## 平均结果汇总（按三轮 Total 耗时计算）
 
-### 解读
-这组对比的核心变量是 allocator，容器实现完全相同。
-push_back 阶段 SGI Pool 快 8%，原因：
-- vector 扩容时需要 allocate 新内存块。SGI 内存池的 allocate 只需从 free_list 头部取一个节点，是 O(1) 的指针操作。
-- std::allocator 底层走 malloc，每次需要遍历空闲链表寻找合适的块，可能触发 brk/mmap 系统调用。
-- 内存池一次性向 OS 申请大块内存，后续分配全在用户态完成，减少了系统调用次数。
-pop_back 阶段两者都接近 0ms，原因：
-- vector 的 pop_back 只做两件事：`--_finish` 和调用析构函数。
-- int 是基本类型，析构函数是空操作（编译器直接优化掉）。
-- pop_back 不释放内存（capacity 不变），allocator 完全不参与，所以两者无差异。
+| 环境 | 对比 | Run 1 | Run 2 | Run 3 | 平均第一列 | 平均第二列 | 平均 Speedup | 结论 |
+| --- | --- | --- | --- | --- | ---: | ---: | ---: | --- |
+| Linux/g++ `-O2` | A vs B：`MyVector + SGIAllocator` vs `MyVector + std::allocator` | 1.26 vs 1.10 | 1.25 vs 1.09 | 1.33 vs 0.92 | 1.28 ms | 1.04 ms | 0.81x | 同容器下，`std::allocator` 更快 |
+| Linux/g++ `-O2` | A vs C：`MyVector + SGIAllocator` vs `std::vector` | 1.26 vs 1.14 | 1.25 vs 1.09 | 1.33 vs 1.02 | 1.28 ms | 1.08 ms | 0.85x | Linux 下标准库方案略快 |
+| Linux/g++ `-O2` | B vs C：`MyVector + std::allocator` vs `std::vector` | 1.10 vs 1.14 | 1.09 vs 1.09 | 0.92 vs 1.02 | 1.04 ms | 1.08 ms | 1.04x | 自定义容器略快，但差距很小 |
+| Windows / VS x64 Debug | A vs B：`MyVector + SGIAllocator` vs `MyVector + std::allocator` | 4.42 vs 2.60 | 4.93 vs 3.52 | 3.74 vs 2.45 | 4.36 ms | 2.86 ms | 0.65x | 同容器下，`std::allocator` 更快 |
+| Windows / VS x64 Debug | A vs C：`MyVector + SGIAllocator` vs `std::vector` | 4.42 vs 12.01 | 4.93 vs 12.70 | 3.74 vs 12.11 | 4.36 ms | 12.27 ms | 2.81x | 自定义组合明显快于 `std::vector` |
+| Windows / VS x64 Debug | B vs C：`MyVector + std::allocator` vs `std::vector` | 2.60 vs 12.01 | 3.52 vs 12.70 | 2.45 vs 12.11 | 2.86 ms | 12.27 ms | 4.30x | 自定义容器路径明显快于 `std::vector` |
 
-### 结论
-纯 allocator 层面，SGI 内存池比标准 malloc 快约 8%。
+## Linux 三轮详细结果
 
+### A vs B：同容器，对比分配器
 
+| 轮次 | SGI Pool Total | std::alloc Total | Speedup |
+| --- | ---: | ---: | ---: |
+| Run 1 | 1.26 ms | 1.10 ms | 0.87x |
+| Run 2 | 1.25 ms | 1.09 ms | 0.87x |
+| Run 3 | 1.33 ms | 0.92 ms | 0.69x |
+| 平均 | 1.28 ms | 1.04 ms | 0.81x |
 
-## 第二组：A vs C（SGI Pool + MyVector vs std::vector）
+### A vs C：自定义组合 vs 标准库方案
 
-Operation                     SGI Pool   std::vector     Speedup
-push_back x 100000               0.52          0.85       1.64x
-pop_back  x 100000               0.00          0.00       0.00x
-Total                            0.52          0.85       1.64x
+| 轮次 | SGI Pool Total | std::vector Total | Speedup |
+| --- | ---: | ---: | ---: |
+| Run 1 | 1.26 ms | 1.14 ms | 0.91x |
+| Run 2 | 1.25 ms | 1.09 ms | 0.87x |
+| Run 3 | 1.33 ms | 1.02 ms | 0.77x |
+| 平均 | 1.28 ms | 1.08 ms | 0.85x |
 
+### B vs C：同分配器，对比容器
 
-### 解读
-这组同时改变了两个变量：allocator 和容器实现。
-push_back 阶段 SGI Pool 快 64%，加速来自两个因素叠加：
-1. allocator 优势（约 8%）：同第一组分析。
-2. 容器实现差异（约 52%）：MSVC 的 std::vector 内部有额外开销：
-   - 迭代器调试检查（即使 Release 模式也可能保留部分）
-   - 更复杂的异常安全路径
-   - 边界安全检查
-   - MyVector 是极简实现，没有这些额外逻辑
+| 轮次 | MyVector(std::alloc) Total | std::vector Total | Speedup |
+| --- | ---: | ---: | ---: |
+| Run 1 | 1.10 ms | 1.14 ms | 1.04x |
+| Run 2 | 1.09 ms | 1.09 ms | 1.01x |
+| Run 3 | 0.92 ms | 1.02 ms | 1.11x |
+| 平均 | 1.04 ms | 1.08 ms | 1.04x |
 
-### 结论
-内存池 + 精简容器的组合，比标准库方案快 64%。这也是简历项目的核心亮点。
+### Linux 结论
 
+Linux/g++ `-O2` 下，自定义内存池和自定义组合方案没有超过标准库方案。更准确的表述是：Linux 环境下完成了三轮 benchmark，对 allocator 与 container 的影响进行了拆分验证，结果显示标准库实现已经非常接近甚至略优。
 
-## 第三组：B vs C（MyVector vs std::vector，同 allocator 对比）
+## Windows 三轮详细结果
 
-Operation                   std::alloc   std::vector     Speedup
-push_back x 100000               0.56          0.85       1.52x
-pop_back  x 100000               0.00          0.00       0.00x
-Total                            0.56          0.85       1.52x
+### A vs B：同容器，对比分配器
 
+| 轮次 | SGI Pool Total | std::alloc Total | Speedup |
+| --- | ---: | ---: | ---: |
+| Run 1 | 4.42 ms | 2.60 ms | 0.59x |
+| Run 2 | 4.93 ms | 3.52 ms | 0.71x |
+| Run 3 | 3.74 ms | 2.45 ms | 0.66x |
+| 平均 | 4.36 ms | 2.86 ms | 0.65x |
 
-### 解读
-这组的核心变量是容器实现，allocator 相同。
-MyVector 比 std::vector 快 52%，纯粹是容器实现的差异：
-- MyVector 的 push_back 路径极短：判断是否需要扩容 → expand/construct → ++_finish
-- std::vector 的 push_back 路径更长：安全检查 → 异常处理 → 可能的迭代器失效标记 → 实际操作
+### A vs C：自定义组合 vs 标准库方案
 
-### 结论
-精简的容器实现本身就能带来显著的性能提升。
+| 轮次 | SGI Pool Total | std::vector Total | Speedup |
+| --- | ---: | ---: | ---: |
+| Run 1 | 4.42 ms | 12.01 ms | 2.72x |
+| Run 2 | 4.93 ms | 12.70 ms | 2.57x |
+| Run 3 | 3.74 ms | 12.11 ms | 3.23x |
+| 平均 | 4.36 ms | 12.27 ms | 2.81x |
 
+### B vs C：同分配器，对比容器
 
-## 内存统计
-Process private before: 2.96 MB
-Process private after:  4.25 MB
-Delta:                  1.29 MB
+| 轮次 | MyVector(std::alloc) Total | std::vector Total | Speedup |
+| --- | ---: | ---: | ---: |
+| Run 1 | 2.60 ms | 12.01 ms | 4.62x |
+| Run 2 | 3.52 ms | 12.70 ms | 3.61x |
+| Run 3 | 2.45 ms | 12.11 ms | 4.94x |
+| 平均 | 2.86 ms | 12.27 ms | 4.30x |
 
+### Windows 结论
 
-### 解读
-- 程序启动时占用 2.96 MB（运行时库、栈等基础开销）
-- 三组测试全部完成后占用 4.25 MB，净增 1.29 MB
-- 理论上 10 万个 int = 0.4 MB，但实际增量 1.29 MB 大于 3 × 0.4 MB = 1.2 MB，原因：
-  - 三组测试是顺序执行的，前一组的 vector 析构后释放的内存会被后一组复用
-  - SGI 内存池的 deallocate 把块挂回 free_list 而非归还 OS，但这些块可以被后续分配复用
-  - vector 扩容时旧空间被释放，分配器可以回收利用
-  - 额外的 0.09 MB 来自 SGI 内存池的预分配策略（chunk_alloc 每次申请 2 × total + 附加量），以及 vector 2 倍扩容导致的 capacity 大于实际 size
-- 1.29 MB 的增量主要来自 SGI 内存池持有的未归还内存（内存池只增不减的特性）以及 vector 扩容预留的多余空间
+Windows / Visual Studio `x64/Debug` 下，自定义组合方案相对 `std::vector` 表现更好，三轮平均 speedup 约为 `2.81x`。但同容器对比中，`MyVector + SGIAllocator` 慢于 `MyVector + std::allocator`，说明 Windows 下的主要优势不能直接归因于“内存池本身更快”，更合理的解释是：简化版 `MyVector` 的执行路径更短，并且 `std::vector` 在 Debug 环境下可能存在更多检查和调试开销。
 
+## 综合结论
 
-## 性能加速比汇总
-|                对比                 | push_back 加速比 |              主要原因                 |
-|   SGI Pool vs std::alloc（同容器）  |       1.08x      |   内存池 allocate 更快，减少系统调用   |
-| SGI Pool + MyVector vs std::vector |       1.64x      |     内存池优势 + 精简容器无额外检查     |
-| MyVector vs std::vector（同 alloc） |       1.52x      | 精简容器实现，无迭代器调试/安全检查开销 |
+1. Linux/g++ `-O2` 下，自定义内存池方案没有取得性能优势，标准库实现表现更稳定。
+2. Windows / Visual Studio `x64/Debug` 下，自定义组合方案相对 `std::vector` 有明显优势，平均约 `2.81x`。
+3. 两个平台结果相反，说明该 benchmark 对编译器、标准库实现、构建模式和 workload 非常敏感。
 
-
-## 为什么 pop_back 全部接近 0？
-pop_back 对 int 类型来说几乎是空操作：
-1. `--_finish`：一次指针减法
-2. `destroy(int*)`：int 是 trivially destructible，析构函数被编译器完全优化掉
-10 万次指针减法在现代 CPU 上耗时不到 1ms，低于计时精度，所以显示为 0.00ms。如果测试的是 std::string 等有实际析构逻辑的类型，pop_back 的耗时差异就会体现出来。

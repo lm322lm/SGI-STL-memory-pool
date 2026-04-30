@@ -154,7 +154,7 @@ Windows Debug 环境下，自定义组合方案相对 `std::vector` 表现更好
 ### Linux
 
 ```bash
-cd src
+cd ~/Desktop/src
 g++ -std=c++17 -O2 -o benchmark main.cpp
 ./benchmark
 ```
